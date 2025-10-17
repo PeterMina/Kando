@@ -103,46 +103,28 @@ function KanbanBoard() {
     }
   }, []);
 
-  const moveTask = useCallback((taskId, newStatus) => {
-    setTasks(prevTasks => prevTasks.map(task =>
-      task.id === taskId
-        ? { ...task, status: newStatus }
-        : task
-    ));
-  }, []);
-
   const getTasksByStatus = useCallback((status) => {
     return tasks.filter(task => task.status === status);
   }, [tasks]);
 
-  const handleDragStart = useCallback((e, task) => {
-    setDraggedTask(task);
-    e.dataTransfer.effectAllowed = 'move';
-    // Add a semi-transparent ghost image
-    if (e.target) {
-      e.target.style.opacity = '0.5';
-    }
-  }, []);
-
   const handleDragOver = useCallback((e) => {
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
   }, []);
 
   const handleDrop = useCallback((e, status) => {
     e.preventDefault();
-    if (draggedTask && draggedTask.status !== status) {
-      moveTask(draggedTask.id, status);
-    }
-    setDraggedTask(null);
-  }, [draggedTask, moveTask]);
+    e.stopPropagation();
 
-  const handleDragEnd = useCallback((e) => {
-    if (e.target) {
-      e.target.style.opacity = '1';
+    const taskId = e.dataTransfer.getData('text/plain');
+    if (taskId && draggedTask && draggedTask.status !== status) {
+      setTasks(prevTasks => prevTasks.map(t =>
+        t.id === parseInt(taskId) ? { ...t, status: status } : t
+      ));
     }
     setDraggedTask(null);
-  }, []);
+  }, [draggedTask]);
 
   const TaskCard = React.memo(({ task }) => {
     const handleEditClick = useCallback((e) => {
@@ -167,6 +149,25 @@ function KanbanBoard() {
       ));
     }, [task.id]);
 
+    const onDragStart = useCallback((e) => {
+      e.stopPropagation();
+      setDraggedTask(task);
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', task.id.toString());
+      if (e.currentTarget) {
+        e.currentTarget.style.opacity = '0.5';
+      }
+    }, [task]);
+
+    const onDragEnd = useCallback((e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.currentTarget) {
+        e.currentTarget.style.opacity = '1';
+      }
+      setDraggedTask(null);
+    }, []);
+
     return (
       <motion.div
         initial={{ opacity: 0, y: 10 }}
@@ -175,8 +176,8 @@ function KanbanBoard() {
         transition={{ duration: 0.2 }}
         className={`task-card ${draggedTask?.id === task.id ? 'dragging' : ''}`}
         draggable
-        onDragStart={(e) => handleDragStart(e, task)}
-        onDragEnd={handleDragEnd}
+        onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
       >
         <div className="task-card-header">
           <span
