@@ -127,30 +127,34 @@ function KanbanBoard() {
   }, [draggedTask]);
 
   const TaskCard = React.memo(({ task }) => {
-    const handleEditClick = useCallback((e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      openTaskModal(task);
-    }, [task]);
+    const [isDragging, setIsDragging] = React.useState(false);
+    const dragStartPos = React.useRef({ x: 0, y: 0 });
 
-    const handleDeleteClick = useCallback((e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      if (window.confirm('Are you sure you want to delete this task?')) {
-        setTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+    const handleEditClick = useCallback(() => {
+      if (!isDragging) {
+        openTaskModal(task);
       }
-    }, [task.id]);
+    }, [task, isDragging]);
 
-    const handleStatusChange = useCallback((newStatus, e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setTasks(prevTasks => prevTasks.map(t =>
-        t.id === task.id ? { ...t, status: newStatus } : t
-      ));
-    }, [task.id]);
+    const handleDeleteClick = useCallback(() => {
+      if (!isDragging) {
+        if (window.confirm('Are you sure you want to delete this task?')) {
+          setTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+        }
+      }
+    }, [task.id, isDragging]);
+
+    const handleStatusChange = useCallback((newStatus) => {
+      if (!isDragging) {
+        setTasks(prevTasks => prevTasks.map(t =>
+          t.id === task.id ? { ...t, status: newStatus } : t
+        ));
+      }
+    }, [task.id, isDragging]);
 
     const onDragStart = useCallback((e) => {
-      e.stopPropagation();
+      dragStartPos.current = { x: e.clientX, y: e.clientY };
+      setIsDragging(false);
       setDraggedTask(task);
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', task.id.toString());
@@ -159,13 +163,23 @@ function KanbanBoard() {
       }
     }, [task]);
 
+    const onDrag = useCallback((e) => {
+      if (e.clientX !== 0 && e.clientY !== 0) {
+        const deltaX = Math.abs(e.clientX - dragStartPos.current.x);
+        const deltaY = Math.abs(e.clientY - dragStartPos.current.y);
+        if (deltaX > 5 || deltaY > 5) {
+          setIsDragging(true);
+        }
+      }
+    }, []);
+
     const onDragEnd = useCallback((e) => {
-      e.preventDefault();
-      e.stopPropagation();
       if (e.currentTarget) {
         e.currentTarget.style.opacity = '1';
       }
       setDraggedTask(null);
+      // Reset isDragging after a short delay to prevent click from firing
+      setTimeout(() => setIsDragging(false), 100);
     }, []);
 
     return (
@@ -177,6 +191,7 @@ function KanbanBoard() {
         className={`task-card ${draggedTask?.id === task.id ? 'dragging' : ''}`}
         draggable
         onDragStart={onDragStart}
+        onDrag={onDrag}
         onDragEnd={onDragEnd}
       >
         <div className="task-card-header">
@@ -190,26 +205,22 @@ function KanbanBoard() {
             {task.priority.toUpperCase()}
           </span>
           <div className="task-actions">
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+            <button
               onClick={handleEditClick}
               className="task-action-btn edit-btn"
               title="Edit task"
               type="button"
             >
               <Edit2 className="w-4 h-4" />
-            </motion.button>
-            <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
+            </button>
+            <button
               onClick={handleDeleteClick}
               className="task-action-btn delete-btn"
               title="Delete task"
               type="button"
             >
               <Trash2 className="w-4 h-4" />
-            </motion.button>
+            </button>
           </div>
         </div>
 
@@ -225,40 +236,34 @@ function KanbanBoard() {
         {/* Quick status change buttons */}
         <div className="task-status-actions">
           {task.status !== 'todo' && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => handleStatusChange('todo', e)}
+            <button
+              onClick={() => handleStatusChange('todo')}
               className="status-move-btn"
               title="Move to To Do"
               type="button"
             >
               ← To Do
-            </motion.button>
+            </button>
           )}
           {task.status !== 'in-progress' && task.status !== 'done' && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => handleStatusChange('in-progress', e)}
+            <button
+              onClick={() => handleStatusChange('in-progress')}
               className="status-move-btn progress-btn"
               title="Move to In Progress"
               type="button"
             >
               In Progress
-            </motion.button>
+            </button>
           )}
           {task.status !== 'done' && (
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={(e) => handleStatusChange('done', e)}
+            <button
+              onClick={() => handleStatusChange('done')}
               className="status-move-btn done-btn"
               title="Move to Done"
               type="button"
             >
               Done →
-            </motion.button>
+            </button>
           )}
         </div>
       </motion.div>
