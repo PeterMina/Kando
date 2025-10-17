@@ -42,6 +42,61 @@
   border-radius: 8px;
 }
 
+.header-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+}
+
+.timer-display {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, var(--deep-blue), var(--teal-green));
+  border-radius: 12px;
+  box-shadow: 0 4px 12px rgba(42, 111, 188, 0.2);
+}
+
+.timer-icon {
+  width: 24px;
+  height: 24px;
+  color: white;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
+}
+
+.timer-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.timer-time {
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 1px;
+  font-family: 'Courier New', monospace;
+}
+
+.timer-date {
+  font-size: 11px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 .nav-tab {
   display: flex;
   align-items: center;
@@ -236,6 +291,23 @@
   .nav-tab {
     flex: 1;
     justify-content: center;
+  }
+
+  .header-center {
+    width: 100%;
+    order: -1;
+  }
+
+  .timer-display {
+    padding: 10px 20px;
+  }
+
+  .timer-time {
+    font-size: 16px;
+  }
+
+  .timer-date {
+    font-size: 10px;
   }
 
   .header-right {

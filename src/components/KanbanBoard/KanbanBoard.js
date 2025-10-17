@@ -491,4 +491,4 @@ function KanbanBoard() {
   );
 }
 
-export default KanbanBoard;
+export default React.memo(KanbanBoard);
