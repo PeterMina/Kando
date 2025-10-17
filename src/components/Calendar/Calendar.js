@@ -97,6 +97,10 @@ function Calendar() {
     setShowEventForm(true);
   }, []);
 
+  const handleEventFormChange = useCallback((field, value) => {
+    setNewEvent(prev => ({ ...prev, [field]: value }));
+  }, []);
+
   const handleAddEvent = useCallback((e) => {
     e.preventDefault();
     if (newEvent.title && selectedDate) {
@@ -376,7 +380,7 @@ function Calendar() {
                     type="text"
                     id="event-title"
                     value={newEvent.title}
-                    onChange={(e) => setNewEvent({ ...newEvent, title: e.target.value })}
+                    onChange={(e) => handleEventFormChange('title', e.target.value)}
                     placeholder="Enter event title"
                     required
                   />
@@ -388,7 +392,7 @@ function Calendar() {
                     <select
                       id="event-type"
                       value={newEvent.type}
-                      onChange={(e) => setNewEvent({ ...newEvent, type: e.target.value })}
+                      onChange={(e) => handleEventFormChange('type', e.target.value)}
                     >
                       <option value="task">Task</option>
                       <option value="meeting">Meeting</option>
@@ -404,7 +408,7 @@ function Calendar() {
                       type="time"
                       id="event-time"
                       value={newEvent.time}
-                      onChange={(e) => setNewEvent({ ...newEvent, time: e.target.value })}
+                      onChange={(e) => handleEventFormChange('time', e.target.value)}
                     />
                   </div>
                 </div>

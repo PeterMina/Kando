@@ -74,6 +74,10 @@ function KanbanBoard() {
     });
   }, []);
 
+  const handleFormChange = useCallback((field, value) => {
+    setTaskForm(prev => ({ ...prev, [field]: value }));
+  }, []);
+
   const handleSubmit = useCallback((e) => {
     e.preventDefault();
 
@@ -406,7 +410,7 @@ function KanbanBoard() {
                   type="text"
                   id="title"
                   value={taskForm.title}
-                  onChange={(e) => setTaskForm({...taskForm, title: e.target.value})}
+                  onChange={(e) => handleFormChange('title', e.target.value)}
                   placeholder="Enter task title"
                   required
                 />
@@ -417,7 +421,7 @@ function KanbanBoard() {
                 <textarea
                   id="description"
                   value={taskForm.description}
-                  onChange={(e) => setTaskForm({...taskForm, description: e.target.value})}
+                  onChange={(e) => handleFormChange('description', e.target.value)}
                   placeholder="Enter task description"
                   rows="4"
                 />
@@ -429,7 +433,7 @@ function KanbanBoard() {
                   <select
                     id="priority"
                     value={taskForm.priority}
-                    onChange={(e) => setTaskForm({...taskForm, priority: e.target.value})}
+                    onChange={(e) => handleFormChange('priority', e.target.value)}
                   >
                     <option value="low">Low</option>
                     <option value="medium">Medium</option>
@@ -442,7 +446,7 @@ function KanbanBoard() {
                   <select
                     id="status"
                     value={taskForm.status}
-                    onChange={(e) => setTaskForm({...taskForm, status: e.target.value})}
+                    onChange={(e) => handleFormChange('status', e.target.value)}
                   >
                     <option value="todo">To Do</option>
                     <option value="in-progress">In Progress</option>
@@ -457,7 +461,7 @@ function KanbanBoard() {
                   type="text"
                   id="project"
                   value={taskForm.project}
-                  onChange={(e) => setTaskForm({...taskForm, project: e.target.value})}
+                  onChange={(e) => handleFormChange('project', e.target.value)}
                   placeholder="Enter project name"
                 />
               </div>
