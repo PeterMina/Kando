@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   format,
@@ -72,32 +72,32 @@ function Calendar() {
     localStorage.setItem('calendar-events', JSON.stringify(events));
   }, [events]);
 
-  const goToPreviousPeriod = () => {
+  const goToPreviousPeriod = useCallback(() => {
     if (view === 'month') {
       setCurrentDate(subMonths(currentDate, 1));
     } else {
       setCurrentDate(subWeeks(currentDate, 1));
     }
-  };
+  }, [view, currentDate]);
 
-  const goToNextPeriod = () => {
+  const goToNextPeriod = useCallback(() => {
     if (view === 'month') {
       setCurrentDate(addMonths(currentDate, 1));
     } else {
       setCurrentDate(addWeeks(currentDate, 1));
     }
-  };
+  }, [view, currentDate]);
 
-  const goToToday = () => {
+  const goToToday = useCallback(() => {
     setCurrentDate(new Date());
-  };
+  }, []);
 
-  const handleDateClick = (day) => {
+  const handleDateClick = useCallback((day) => {
     setSelectedDate(day);
     setShowEventForm(true);
-  };
+  }, []);
 
-  const handleAddEvent = (e) => {
+  const handleAddEvent = useCallback((e) => {
     e.preventDefault();
     if (newEvent.title && selectedDate) {
       const event = {
@@ -112,17 +112,17 @@ function Calendar() {
       setShowEventForm(false);
       setSelectedDate(null);
     }
-  };
+  }, [newEvent, selectedDate, events]);
 
-  const handleDeleteEvent = (eventId) => {
+  const handleDeleteEvent = useCallback((eventId) => {
     setEvents(events.filter(e => e.id !== eventId));
-  };
+  }, [events]);
 
-  const getEventsForDate = (date) => {
+  const getEventsForDate = useCallback((date) => {
     return events.filter(event =>
       isSameDay(new Date(event.date), date)
     );
-  };
+  }, [events]);
 
   const renderMonthView = () => {
     const monthStart = startOfMonth(currentDate);
