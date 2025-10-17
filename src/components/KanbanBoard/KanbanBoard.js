@@ -144,108 +144,127 @@ function KanbanBoard() {
     setDraggedTask(null);
   }, []);
 
-  const TaskCard = React.memo(({ task }) => (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className={`task-card ${draggedTask?.id === task.id ? 'dragging' : ''}`}
-      draggable
-      onDragStart={(e) => handleDragStart(e, task)}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="task-card-header">
-        <span
-          className="priority-badge"
-          style={{
-            backgroundColor: priorityColors[task.priority].bg,
-            color: priorityColors[task.priority].text
-          }}
-        >
-          {task.priority.toUpperCase()}
-        </span>
-        <div className="task-actions">
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              openTaskModal(task);
+  const TaskCard = React.memo(({ task }) => {
+    const handleEditClick = useCallback((e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      openTaskModal(task);
+    }, [task]);
+
+    const handleDeleteClick = useCallback((e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (window.confirm('Are you sure you want to delete this task?')) {
+        setTasks(prevTasks => prevTasks.filter(t => t.id !== task.id));
+      }
+    }, [task.id]);
+
+    const handleStatusChange = useCallback((newStatus, e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setTasks(prevTasks => prevTasks.map(t =>
+        t.id === task.id ? { ...t, status: newStatus } : t
+      ));
+    }, [task.id]);
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ duration: 0.2 }}
+        className={`task-card ${draggedTask?.id === task.id ? 'dragging' : ''}`}
+        draggable
+        onDragStart={(e) => handleDragStart(e, task)}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="task-card-header">
+          <span
+            className="priority-badge"
+            style={{
+              backgroundColor: priorityColors[task.priority].bg,
+              color: priorityColors[task.priority].text
             }}
-            className="task-action-btn edit-btn"
-            title="Edit task"
           >
-            <Edit2 className="w-4 h-4" />
-          </motion.button>
-          <motion.button
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={(e) => deleteTask(task.id, e)}
-            className="task-action-btn delete-btn"
-            title="Delete task"
-          >
-            <Trash2 className="w-4 h-4" />
-          </motion.button>
+            {task.priority.toUpperCase()}
+          </span>
+          <div className="task-actions">
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleEditClick}
+              className="task-action-btn edit-btn"
+              title="Edit task"
+              type="button"
+            >
+              <Edit2 className="w-4 h-4" />
+            </motion.button>
+            <motion.button
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleDeleteClick}
+              className="task-action-btn delete-btn"
+              title="Delete task"
+              type="button"
+            >
+              <Trash2 className="w-4 h-4" />
+            </motion.button>
+          </div>
         </div>
-      </div>
 
-      <h3 className="task-title">{task.title}</h3>
-      {task.description && (
-        <p className="task-description">{task.description}</p>
-      )}
+        <h3 className="task-title">{task.title}</h3>
+        {task.description && (
+          <p className="task-description">{task.description}</p>
+        )}
 
-      {task.project && (
-        <div className="task-project">{task.project}</div>
-      )}
+        {task.project && (
+          <div className="task-project">{task.project}</div>
+        )}
 
-      {/* Quick status change buttons */}
-      <div className="task-status-actions">
-        {task.status !== 'todo' && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              moveTask(task.id, 'todo');
-            }}
-            className="status-move-btn"
-            title="Move to To Do"
-          >
-            ← To Do
-          </motion.button>
-        )}
-        {task.status !== 'in-progress' && task.status !== 'done' && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              moveTask(task.id, 'in-progress');
-            }}
-            className="status-move-btn progress-btn"
-            title="Move to In Progress"
-          >
-            In Progress
-          </motion.button>
-        )}
-        {task.status !== 'done' && (
-          <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={(e) => {
-              e.stopPropagation();
-              moveTask(task.id, 'done');
-            }}
-            className="status-move-btn done-btn"
-            title="Move to Done"
-          >
-            Done →
-          </motion.button>
-        )}
-      </div>
-    </motion.div>
-  ));
+        {/* Quick status change buttons */}
+        <div className="task-status-actions">
+          {task.status !== 'todo' && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={(e) => handleStatusChange('todo', e)}
+              className="status-move-btn"
+              title="Move to To Do"
+              type="button"
+            >
+              ← To Do
+            </motion.button>
+          )}
+          {task.status !== 'in-progress' && task.status !== 'done' && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={(e) => handleStatusChange('in-progress', e)}
+              className="status-move-btn progress-btn"
+              title="Move to In Progress"
+              type="button"
+            >
+              In Progress
+            </motion.button>
+          )}
+          {task.status !== 'done' && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={(e) => handleStatusChange('done', e)}
+              className="status-move-btn done-btn"
+              title="Move to Done"
+              type="button"
+            >
+              Done →
+            </motion.button>
+          )}
+        </div>
+      </motion.div>
+    );
+  });
+
+  TaskCard.displayName = 'TaskCard';
 
   return (
     <div className="kanban-board">
