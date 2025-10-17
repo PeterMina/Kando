@@ -1,0 +1,23 @@
+<svg width="120" height="40" viewBox="0 0 120 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- K icon with arrows -->
+  <g transform="translate(0, 5)">
+    <!-- Blue left bar -->
+    <rect x="0" y="0" width="8" height="30" fill="#2A6FBC" rx="2"/>
+
+    <!-- Teal middle K -->
+    <rect x="12" y="0" width="16" height="30" fill="#2EB086" rx="2"/>
+    <text x="20" y="22" font-family="Arial, sans-serif" font-size="20" font-weight="bold" fill="white" text-anchor="middle">k</text>
+
+    <!-- Green right bars -->
+    <rect x="32" y="0" width="12" height="12" fill="#7BC043" rx="2"/>
+    <rect x="32" y="18" width="12" height="12" fill="#7BC043" rx="2"/>
+
+    <!-- Orange arrows -->
+    <path d="M 5 15 L 10 15 L 8 13 M 10 15 L 8 17" stroke="#F9A100" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 29 8 L 34 8 L 32 6 M 34 8 L 32 10" stroke="#F9A100" stroke-width="2" fill="none" stroke-linecap="round"/>
+    <path d="M 29 24 L 34 24 L 32 22 M 34 24 L 32 26" stroke="#F9A100" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </g>
+
+  <!-- Kando text -->
+  <text x="52" y="25" font-family="Arial, sans-serif" font-size="18" font-weight="bold" fill="#343A40">Kando</text>
+</svg>
