@@ -1,54 +1,87 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import './Login.css';
 import kandoLogo from '../../assets/kando-logo.svg';
+import { authApi } from '../../services/api';
 
 function Login({ onLogin, onSwitchToRegister }) {
-  const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  // Mock user data
-  const mockUsers = [
-    { username: 'admin', password: 'admin123' },
-    { username: 'user', password: 'user123' }
-  ];
+  const validateForm = () => {
+    if (!email.trim()) {
+      setError('Email is required');
+      return false;
+    }
 
-  const handleSubmit = (e) => {
+    if (!password) {
+      setError('Password is required');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
 
-    // Check registered users from localStorage
-    const registeredUsers = JSON.parse(localStorage.getItem('kando-users') || '[]');
-    const registeredUser = registeredUsers.find(
-      u => (u.username === username || u.email === username) && u.password === password
-    );
-
-    if (registeredUser) {
-      onLogin({
-        username: registeredUser.username,
-        email: registeredUser.email,
-        firstName: registeredUser.firstName,
-        lastName: registeredUser.lastName,
-        isGuest: false
-      });
+    if (!validateForm()) {
       return;
     }
 
-    // Check mock users
-    const mockUser = mockUsers.find(
-      u => u.username === username && u.password === password
-    );
+    setLoading(true);
 
-    if (mockUser) {
-      onLogin(mockUser);
-    } else {
-      setError('Invalid username or password');
+    try {
+      const response = await authApi.login({
+        email,
+        password,
+      });
+
+      // Store token if provided
+      if (response.token) {
+        localStorage.setItem('authToken', response.token);
+      }
+
+      // Call onLogin callback with user data
+      onLogin({
+        email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
+      });
+    } catch (err) {
+      setError(err.message || 'Invalid email or password');
+      console.error('Login error:', err);
+    } finally {
+      setLoading(false);
     }
-  };
+  }, [email, password, onLogin]);
 
-  const handleGuestLogin = () => {
-    onLogin({ username: 'Guest', isGuest: true });
-  };
+  const handleGuestLogin = useCallback(async () => {
+    setError('');
+    setLoading(true);
+
+    try {
+      const response = await authApi.guestLogin();
+
+      // Store guest token if provided
+      if (response.token) {
+        localStorage.setItem('authToken', response.token);
+      }
+
+      onLogin({
+        email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        tier: response.tier,
+      });
+    } catch (err) {
+      setError(err.message || 'Guest login failed. Please try again.');
+      console.error('Guest login error:', err);
+      setLoading(false);
+    }
+  }, [onLogin]);
 
   return (
     <div className="login-container">
@@ -61,14 +94,15 @@ function Login({ onLogin, onSwitchToRegister }) {
 
         <form onSubmit={handleSubmit} className="login-form">
           <div className="form-group">
-            <label htmlFor="username">Username</label>
+            <label htmlFor="email">Email</label>
             <input
               type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Enter username"
-              required
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter email"
+              disabled={loading}
+              autoComplete="email"
             />
           </div>
 
@@ -80,14 +114,15 @@ function Login({ onLogin, onSwitchToRegister }) {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Enter password"
-              required
+              disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
           {error && <div className="error-message">{error}</div>}
 
-          <button type="submit" className="btn-login">
-            Login
+          <button type="submit" className="btn-login" disabled={loading}>
+            {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
 
@@ -95,13 +130,21 @@ function Login({ onLogin, onSwitchToRegister }) {
           <span>OR</span>
         </div>
 
-        <button onClick={handleGuestLogin} className="btn-guest">
-          Continue as Guest
+        <button
+          onClick={handleGuestLogin}
+          className="btn-guest"
+          disabled={loading}
+        >
+          {loading ? 'Continuing...' : 'Continue as Guest'}
         </button>
 
         <div className="register-link">
           Don't have an account?{' '}
-          <button onClick={onSwitchToRegister} className="link-btn">
+          <button
+            onClick={onSwitchToRegister}
+            className="link-btn"
+            disabled={loading}
+          >
             Create one here
           </button>
         </div>

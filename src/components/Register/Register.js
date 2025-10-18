@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import './Register.css';
 import kandoLogo from '../../assets/kando-logo.svg';
+import { authApi } from '../../services/api';
 
 function Register({ onRegister, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
@@ -11,82 +12,87 @@ function Register({ onRegister, onSwitchToLogin }) {
     confirmPassword: ''
   });
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleFormChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   }, []);
 
-  const handleSubmit = useCallback((e) => {
-    e.preventDefault();
-    setError('');
-
-    // Validation
+  const validateForm = () => {
     if (!formData.firstName.trim()) {
       setError('First name is required');
-      return;
+      return false;
     }
 
     if (!formData.lastName.trim()) {
       setError('Last name is required');
-      return;
+      return false;
     }
 
     if (!formData.email.trim()) {
       setError('Email is required');
-      return;
+      return false;
     }
 
-    // Basic email validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(formData.email)) {
       setError('Please enter a valid email address');
-      return;
+      return false;
     }
 
     if (!formData.password) {
       setError('Password is required');
-      return;
+      return false;
     }
 
     if (formData.password.length < 6) {
       setError('Password must be at least 6 characters long');
-      return;
+      return false;
     }
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      return false;
+    }
+
+    return true;
+  };
+
+  const handleSubmit = useCallback(async (e) => {
+    e.preventDefault();
+    setError('');
+
+    if (!validateForm()) {
       return;
     }
 
-    // Save user to localStorage
-    const users = JSON.parse(localStorage.getItem('kando-users') || '[]');
+    setLoading(true);
 
-    // Check if email already exists
-    if (users.some(user => user.email === formData.email)) {
-      setError('Email already registered');
-      return;
+    try {
+      const response = await authApi.register({
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        email: formData.email,
+        password: formData.password,
+      });
+
+      // Store token if provided
+      if (response.token) {
+        localStorage.setItem('authToken', response.token);
+      }
+
+      // Call onRegister callback with user data
+      onRegister({
+        email: response.email,
+        firstName: response.firstName,
+        lastName: response.lastName,
+      });
+    } catch (err) {
+      setError(err.message || 'Registration failed. Please try again.');
+      console.error('Registration error:', err);
+    } finally {
+      setLoading(false);
     }
-
-    const newUser = {
-      id: Date.now(),
-      firstName: formData.firstName,
-      lastName: formData.lastName,
-      email: formData.email,
-      username: formData.email.split('@')[0],
-      password: formData.password
-    };
-
-    users.push(newUser);
-    localStorage.setItem('kando-users', JSON.stringify(users));
-
-    // Auto-login after registration
-    onRegister({
-      username: newUser.username,
-      email: newUser.email,
-      firstName: newUser.firstName,
-      lastName: newUser.lastName,
-      isGuest: false
-    });
   }, [formData, onRegister]);
 
   return (
@@ -111,6 +117,7 @@ function Register({ onRegister, onSwitchToLogin }) {
                 onChange={(e) => handleFormChange('firstName', e.target.value)}
                 placeholder="Enter your first name"
                 autoComplete="given-name"
+                disabled={loading}
               />
             </div>
 
@@ -123,6 +130,7 @@ function Register({ onRegister, onSwitchToLogin }) {
                 onChange={(e) => handleFormChange('lastName', e.target.value)}
                 placeholder="Enter your last name"
                 autoComplete="family-name"
+                disabled={loading}
               />
             </div>
           </div>
@@ -136,6 +144,7 @@ function Register({ onRegister, onSwitchToLogin }) {
               onChange={(e) => handleFormChange('email', e.target.value)}
               placeholder="Enter your email"
               autoComplete="email"
+              disabled={loading}
             />
           </div>
 
@@ -148,6 +157,7 @@ function Register({ onRegister, onSwitchToLogin }) {
               onChange={(e) => handleFormChange('password', e.target.value)}
               placeholder="Create a password (min 6 characters)"
               autoComplete="new-password"
+              disabled={loading}
             />
           </div>
 
@@ -160,17 +170,18 @@ function Register({ onRegister, onSwitchToLogin }) {
               onChange={(e) => handleFormChange('confirmPassword', e.target.value)}
               placeholder="Confirm your password"
               autoComplete="new-password"
+              disabled={loading}
             />
           </div>
 
-          <button type="submit" className="btn-register">
-            Create Account
+          <button type="submit" className="btn-register" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         <div className="login-link">
           Already have an account?{' '}
-          <button onClick={onSwitchToLogin} className="link-btn">
+          <button onClick={onSwitchToLogin} className="link-btn" disabled={loading}>
             Sign in here
           </button>
         </div>

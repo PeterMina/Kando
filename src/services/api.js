@@ -1,0 +1,91 @@
+// services/api.js
+const API_BASE_URL = process.env.KANDO_API_BASE_URL || 'http://localhost:5000/api/v1';
+
+// Helper function to handle API requests
+const apiCall = async (endpoint, options = {}) => {
+  const { method = 'GET', body = null, headers = {} } = options;
+
+  const config = {
+    method,
+    headers: {
+      'Content-Type': 'application/json',
+      ...headers,
+    },
+  };
+
+  // Add token to headers if available
+  const token = localStorage.getItem('authToken');
+  if (token) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (body) {
+    config.body = JSON.stringify(body);
+  }
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
+    const data = await response.json();
+
+    if (!response.ok) {
+      throw {
+        status: response.status,
+        message: data.message || 'An error occurred',
+        data,
+      };
+    }
+
+    return data;
+  } catch (error) {
+    if (error.status) {
+      throw error;
+    }
+    throw {
+      status: 0,
+      message: 'Network error. Please check your connection.',
+      error,
+    };
+  }
+};
+
+// Auth API endpoints
+export const authApi = {
+  register: (userData) =>
+    apiCall('/auth/register', {
+      method: 'POST',
+      body: userData,
+    }),
+
+  login: (credentials) =>
+    apiCall('/auth/login', {
+      method: 'POST',
+      body: credentials,
+    }),
+};
+
+// Tasks API endpoints
+export const tasksApi = {
+  getAll: () =>
+    apiCall('/tasks', {
+      method: 'GET',
+    }),
+
+  create: (taskData) =>
+    apiCall('/tasks', {
+      method: 'POST',
+      body: taskData,
+    }),
+
+  update: (taskId, taskData) =>
+    apiCall(`/tasks/${taskId}`, {
+      method: 'PUT',
+      body: taskData,
+    }),
+
+  delete: (taskId) =>
+    apiCall(`/tasks/${taskId}`, {
+      method: 'DELETE',
+    }),
+};
+
+export default apiCall;
