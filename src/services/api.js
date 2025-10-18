@@ -65,27 +65,42 @@ export const authApi = {
 
 // Tasks API endpoints
 export const tasksApi = {
-  getAll: () =>
-    apiCall('/tasks', {
-      method: 'GET',
-    }),
+  // Get all user tasks
+  getAll: (month, year) => {
+    const query = [];
+    if (month) query.push(`month=${month}`);
+    if (year) query.push(`year=${year}`);
+    const queryString = query.length ? `?${query.join('&')}` : '';
+    return apiCall(`/tasks${queryString}`, { method: 'GET' });
+  },
 
+  // Create a new task
   create: (taskData) =>
     apiCall('/tasks', {
       method: 'POST',
       body: taskData,
     }),
 
+  // Update an existing task (full update)
   update: (taskId, taskData) =>
     apiCall(`/tasks/${taskId}`, {
       method: 'PUT',
       body: taskData,
     }),
 
+  // Update only the status of a task
+  updateStatus: (taskId, status) =>
+    apiCall(`/tasks/${taskId}/status`, {
+      method: 'PATCH',
+      body: { status },
+    }),
+
+  // Delete a task by ID
   delete: (taskId) =>
     apiCall(`/tasks/${taskId}`, {
       method: 'DELETE',
     }),
 };
+
 
 export default apiCall;
