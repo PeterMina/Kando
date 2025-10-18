@@ -205,6 +205,32 @@
   border: 1px solid var(--light-gray);
 }
 
+.register-link {
+  text-align: center;
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 2px solid #f0f0f0;
+  color: #6c757d;
+  font-size: 15px;
+}
+
+.link-btn {
+  background: none;
+  border: none;
+  color: var(--deep-blue);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 0.3s ease;
+  font-size: 15px;
+  padding: 0;
+}
+
+.link-btn:hover {
+  color: var(--teal-green);
+  text-decoration: underline;
+}
+
 /* Responsive */
 @media (max-width: 480px) {
   .login-card {

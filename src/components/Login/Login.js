@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import './Login.css';
 import kandoLogo from '../../assets/kando-logo.svg';
 
-function Login({ onLogin }) {
+function Login({ onLogin, onSwitchToRegister }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -17,12 +17,30 @@ function Login({ onLogin }) {
     e.preventDefault();
     setError('');
 
-    const user = mockUsers.find(
+    // Check registered users from localStorage
+    const registeredUsers = JSON.parse(localStorage.getItem('kando-users') || '[]');
+    const registeredUser = registeredUsers.find(
+      u => (u.username === username || u.email === username) && u.password === password
+    );
+
+    if (registeredUser) {
+      onLogin({
+        username: registeredUser.username,
+        email: registeredUser.email,
+        firstName: registeredUser.firstName,
+        lastName: registeredUser.lastName,
+        isGuest: false
+      });
+      return;
+    }
+
+    // Check mock users
+    const mockUser = mockUsers.find(
       u => u.username === username && u.password === password
     );
 
-    if (user) {
-      onLogin(user);
+    if (mockUser) {
+      onLogin(mockUser);
     } else {
       setError('Invalid username or password');
     }
@@ -85,6 +103,13 @@ function Login({ onLogin }) {
           <p><strong>Demo Credentials:</strong></p>
           <p>Username: <code>admin</code> | Password: <code>admin123</code></p>
           <p>Username: <code>user</code> | Password: <code>user123</code></p>
+        </div>
+
+        <div className="register-link">
+          Don't have an account?{' '}
+          <button onClick={onSwitchToRegister} className="link-btn">
+            Create one here
+          </button>
         </div>
       </div>
     </div>
