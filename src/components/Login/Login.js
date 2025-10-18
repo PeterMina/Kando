@@ -99,12 +99,6 @@ function Login({ onLogin, onSwitchToRegister }) {
           Continue as Guest
         </button>
 
-        <div className="demo-credentials">
-          <p><strong>Demo Credentials:</strong></p>
-          <p>Username: <code>admin</code> | Password: <code>admin123</code></p>
-          <p>Username: <code>user</code> | Password: <code>user123</code></p>
-        </div>
-
         <div className="register-link">
           Don't have an account?{' '}
           <button onClick={onSwitchToRegister} className="link-btn">
