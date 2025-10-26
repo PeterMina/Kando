@@ -46,10 +46,10 @@ function Login({ onLogin, onSwitchToRegister }) {
 
       // Call onLogin callback with user data
       onLogin({
-        email: response.email,
-        firstName: response.firstName,
-        lastName: response.lastName,
-      });
+        email: response.user.email,
+        firstName: response.user.firstName,
+        lastName: response.user.lastName,
+      }, response.token);
     } catch (err) {
       setError(err.message || 'Invalid email or password');
       console.error('Login error:', err);

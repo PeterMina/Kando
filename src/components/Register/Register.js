@@ -76,11 +76,6 @@ function Register({ onRegister, onSwitchToLogin }) {
         password: formData.password,
       });
 
-      // Store token if provided
-      if (response.token) {
-        localStorage.setItem('authToken', response.token);
-      }
-
       // Call onRegister callback with user data
       onRegister({
         email: response.email,
