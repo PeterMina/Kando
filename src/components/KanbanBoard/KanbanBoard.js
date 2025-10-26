@@ -1,8 +1,9 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Trash2, Edit2, Clock, CheckSquare, AlertCircle } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Clock, CheckSquare, AlertCircle, Info } from 'lucide-react';
 import './KanbanBoard.css';
 import { tasksApi } from '../../services/api';
+import TaskModal from '../TaskModal/TaskModal';
 
 function KanbanBoard() {
   const [draggedTask, setDraggedTask] = useState(null);
@@ -10,14 +11,11 @@ function KanbanBoard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
+  // Check if user is in guest mode
+  const isGuest = window.__KANDO_GUEST_MODE__ || false;
+
   const [showTaskModal, setShowTaskModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
-  const [taskForm, setTaskForm] = useState({
-    title: '',
-    description: '',
-    priority: 'MEDIUM',
-    deadline: ''
-  });
 
   // Helper function to convert backend status to frontend status
   const toFrontendStatus = (backendStatus) => {
@@ -71,56 +69,26 @@ function KanbanBoard() {
   }, []);
 
   const priorityColors = {
-    Low: { bg: '#2A6FBC', text: '#ffffff' },
-    Medium: { bg: '#F9A100', text: '#ffffff' },
+    LOW: { bg: '#28a745', text: '#ffffff' },      // Green for low priority
+    MEDIUM: { bg: '#ffc107', text: '#000000' },    // Yellow/Orange for medium priority
+    HIGH: { bg: '#dc3545', text: '#ffffff' },      // Red for high priority
+    // Fallback for old lowercase format
+    Low: { bg: '#28a745', text: '#ffffff' },
+    Medium: { bg: '#ffc107', text: '#000000' },
     High: { bg: '#dc3545', text: '#ffffff' }
   };
 
   const openTaskModal = useCallback((task = null) => {
-    if (task) {
-      setEditingTask(task);
-      // Convert ISO date string to datetime-local format
-      const deadline = task.deadline ? new Date(task.deadline).toISOString().slice(0, 16) : '';
-      setTaskForm({
-        title: task.title,
-        description: task.description || '',
-        priority: task.priority || '  MEDIUM',
-        deadline: deadline
-      });
-    } else {
-      setEditingTask(null);
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      setTaskForm({
-        title: '',
-        description: '',
-        priority: 'MEDIUM',
-        deadline: tomorrow.toISOString().slice(0, 16)
-      });
-    }
+    setEditingTask(task);
     setShowTaskModal(true);
   }, []);
 
   const closeTaskModal = useCallback(() => {
     setShowTaskModal(false);
     setEditingTask(null);
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    setTaskForm({
-      title: '',
-      description: '',
-      priority: 'MEDIUM',
-      deadline: tomorrow.toISOString().slice(0, 16)
-    });
   }, []);
 
-  const handleFormChange = useCallback((field, value) => {
-    setTaskForm(prev => ({ ...prev, [field]: value }));
-  }, []);
-
-  const handleSubmit = useCallback(async (e) => {
-    e.preventDefault();
-
+  const handleSubmit = useCallback(async (taskFormData) => {
     setLoading(true);
     setError(null);
 
@@ -128,30 +96,29 @@ function KanbanBoard() {
       if (editingTask) {
         // Update existing task
         const updateData = {
-          title: taskForm.title,
-          description: taskForm.description,
-          priority: taskForm.priority,
-          deadline: new Date(taskForm.deadline).toISOString()
+          title: taskFormData.title,
+          description: taskFormData.description,
+          priority: taskFormData.priority,
+          deadline: new Date(taskFormData.deadline).toISOString()
         };
         const updatedTask = await tasksApi.update(editingTask.id, updateData);
-        
+
         // Convert status and update in state
         setTasks(prevTasks => prevTasks.map(task =>
-          task.id === editingTask.id 
+          task.id === editingTask.id
             ? { ...updatedTask, status: toFrontendStatus(updatedTask.status) }
             : task
         ));
       } else {
         // Create new task
         const createData = {
-          title: taskForm.title,
-          description: taskForm.description,
-          priority: taskForm.priority,
-          deadline: new Date(taskForm.deadline).toISOString()
+          title: taskFormData.title,
+          description: taskFormData.description,
+          priority: taskFormData.priority,
+          deadline: new Date(taskFormData.deadline).toISOString()
         };
-        console.log("Creating task with data:", createData);
         const newTask = await tasksApi.create(createData);
-        
+
         // Add new task with converted status
         setTasks(prevTasks => [...prevTasks, {
           ...newTask,
@@ -160,12 +127,11 @@ function KanbanBoard() {
       }
       closeTaskModal();
     } catch (err) {
-      console.error('Failed to save task:', err);
       setError(err.message || 'Failed to save task');
     } finally {
       setLoading(false);
     }
-  }, [editingTask, taskForm, closeTaskModal]);
+  }, [editingTask, closeTaskModal, toFrontendStatus]);
 
   const deleteTask = useCallback(async (taskId, e) => {
     e.stopPropagation();
@@ -232,23 +198,16 @@ function KanbanBoard() {
   }, [draggedTask]);
 
   const TaskCard = React.memo(({ task }) => {
-    const [isDragging, setIsDragging] = React.useState(false);
-    const dragStartPos = React.useRef({ x: 0, y: 0 });
-
     const handleEditClick = useCallback(() => {
-      if (!isDragging) {
-        openTaskModal(task);
-      }
-    }, [task, isDragging]);
+      openTaskModal(task);
+    }, [task]);
 
     const handleDeleteClick = useCallback((e) => {
-      if (!isDragging) {
-        deleteTask(task.id, e);
-      }
-    }, [task.id, isDragging]);
+      deleteTask(task.id, e);
+    }, [task.id]);
 
     const handleStatusChange = useCallback(async (newFrontendStatus) => {
-      if (isDragging || task.status === newFrontendStatus) return;
+      if (task.status === newFrontendStatus) return;
 
       const newBackendStatus = toBackendStatus(newFrontendStatus);
 
@@ -261,43 +220,32 @@ function KanbanBoard() {
       try {
         await tasksApi.updateStatus(task.id, newBackendStatus);
       } catch (err) {
-        console.error('Failed to update task status:', err);
         setError(err.message || 'Failed to update task status');
-        
+
         // Revert on error
         setTasks(prevTasks => prevTasks.map(t =>
           t.id === task.id ? { ...t, status: task.status } : t
         ));
       }
-    }, [task.id, task.status, isDragging]);
+    }, [task.id, task.status]);
 
     const onDragStart = useCallback((e) => {
-      dragStartPos.current = { x: e.clientX, y: e.clientY };
-      setIsDragging(false);
       setDraggedTask(task);
       e.dataTransfer.effectAllowed = 'move';
       e.dataTransfer.setData('text/plain', task.id.toString());
-      if (e.currentTarget) {
-        e.currentTarget.style.opacity = '0.5';
-      }
+      // Add a slight delay to avoid ghost image flicker
+      requestAnimationFrame(() => {
+        if (e.target) {
+          e.target.style.opacity = '0.5';
+        }
+      });
     }, [task]);
 
-    const onDrag = useCallback((e) => {
-      if (e.clientX !== 0 && e.clientY !== 0) {
-        const deltaX = Math.abs(e.clientX - dragStartPos.current.x);
-        const deltaY = Math.abs(e.clientY - dragStartPos.current.y);
-        if (deltaX > 5 || deltaY > 5) {
-          setIsDragging(true);
-        }
-      }
-    }, []);
-
     const onDragEnd = useCallback((e) => {
-      if (e.currentTarget) {
-        e.currentTarget.style.opacity = '1';
+      if (e.target) {
+        e.target.style.opacity = '1';
       }
       setDraggedTask(null);
-      setTimeout(() => setIsDragging(false), 100);
     }, []);
 
     return (
@@ -309,7 +257,6 @@ function KanbanBoard() {
         className={`task-card ${draggedTask?.id === task.id ? 'dragging' : ''}`}
         draggable
         onDragStart={onDragStart}
-        onDrag={onDrag}
         onDragEnd={onDragEnd}
       >
         <div className="task-card-header">
@@ -400,6 +347,26 @@ function KanbanBoard() {
           <AlertCircle className="w-5 h-5" />
           <span>{error}</span>
           <button onClick={() => setError(null)}>×</button>
+        </div>
+      )}
+
+      {isGuest && (
+        <div className="guest-mode-banner" style={{
+          backgroundColor: '#FFF3CD',
+          border: '1px solid #FFE69C',
+          borderRadius: '8px',
+          padding: '12px 16px',
+          marginBottom: '16px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          color: '#856404'
+        }}>
+          <Info className="w-5 h-5" style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: '14px', lineHeight: '1.5' }}>
+            <strong>Guest Mode:</strong> You're exploring Kando with demo data. Create, edit, and move tasks to try all features.
+            All changes are temporary and won't be saved after you log out.
+          </span>
         </div>
       )}
 
@@ -509,105 +476,13 @@ function KanbanBoard() {
 
       {/* Task Modal */}
       <AnimatePresence>
-        {showTaskModal && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="modal-overlay"
-            onClick={closeTaskModal}
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="modal-content"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="modal-header">
-                <h3 className="modal-title">
-                  {editingTask ? 'Edit Task' : 'Create New Task'}
-                </h3>
-                <button onClick={closeTaskModal} className="modal-close-btn">
-                  ×
-                </button>
-              </div>
-
-              <form onSubmit={handleSubmit} className="task-form">
-                <div className="form-group">
-                  <label htmlFor="title">Task Title *</label>
-                  <input
-                    type="text"
-                    id="title"
-                    value={taskForm.title}
-                    onChange={(e) => handleFormChange('title', e.target.value)}
-                    placeholder="Enter task title"
-                    required
-                  />
-                </div>
-
-                <div className="form-group">
-                  <label htmlFor="description">Description</label>
-                  <textarea
-                    id="description"
-                    value={taskForm.description}
-                    onChange={(e) => handleFormChange('description', e.target.value)}
-                    placeholder="Enter task description"
-                    rows="4"
-                  />
-                </div>
-
-                <div className="form-row">
-                  <div className="form-group">
-                    <label htmlFor="priority">Priority</label>
-                    <select
-                      id="priority"
-                      value={taskForm.priority}
-                      onChange={(e) => handleFormChange('priority', e.target.value)}
-                    >
-                      <option value="LOW">Low</option>
-                      <option value="MEDIUM">Medium</option>
-                      <option value="HIGH">High</option>
-                    </select>
-                  </div>
-
-                  <div className="form-group">
-                    <label htmlFor="deadline">Deadline *</label>
-                    <input
-                      type="datetime-local"
-                      id="deadline"
-                      value={taskForm.deadline}
-                      onChange={(e) => handleFormChange('deadline', e.target.value)}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="modal-footer">
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="button"
-                    onClick={closeTaskModal}
-                    className="btn-cancel"
-                  >
-                    Cancel
-                  </motion.button>
-                  <motion.button
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    type="submit"
-                    className="btn-submit"
-                    disabled={loading}
-                  >
-                    <PlusCircle className="w-4 h-4 mr-2" />
-                    {editingTask ? 'Update Task' : 'Create Task'}
-                  </motion.button>
-                </div>
-              </form>
-            </motion.div>
-          </motion.div>
-        )}
+        <TaskModal
+          isOpen={showTaskModal}
+          onClose={closeTaskModal}
+          onSubmit={handleSubmit}
+          editingTask={editingTask}
+          loading={loading}
+        />
       </AnimatePresence>
     </div>
   );

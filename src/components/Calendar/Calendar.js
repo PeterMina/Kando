@@ -41,11 +41,18 @@ const eventTypeColors = {
 function Calendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState('month'); // 'month' or 'week'
-  const [events, setEvents] = useState([
+
+  // Check if user is in guest mode
+  const isGuest = window.__KANDO_GUEST_MODE__ || false;
+
+  // Default demo events for guest mode
+  const defaultEvents = [
     { id: 1, title: 'Design Review', date: new Date(), type: 'meeting', time: '10:00 AM' },
     { id: 2, title: 'Project Deadline', date: new Date(Date.now() + 86400000), type: 'deadline', time: '5:00 PM' },
     { id: 3, title: 'Team Meeting', date: new Date(Date.now() + 172800000), type: 'meeting', time: '2:00 PM' },
-  ]);
+  ];
+
+  const [events, setEvents] = useState(defaultEvents);
   const [showEventForm, setShowEventForm] = useState(false);
   const [selectedDate, setSelectedDate] = useState(null);
   const [newEvent, setNewEvent] = useState({
@@ -54,23 +61,27 @@ function Calendar() {
     time: '09:00'
   });
 
-  // Load events from localStorage
+  // Load events from localStorage (only for non-guest users)
   useEffect(() => {
-    const savedEvents = localStorage.getItem('calendar-events');
-    if (savedEvents) {
-      const parsed = JSON.parse(savedEvents);
-      const eventsWithDates = parsed.map(e => ({
-        ...e,
-        date: new Date(e.date)
-      }));
-      setEvents(eventsWithDates);
+    if (!isGuest) {
+      const savedEvents = localStorage.getItem('calendar-events');
+      if (savedEvents) {
+        const parsed = JSON.parse(savedEvents);
+        const eventsWithDates = parsed.map(e => ({
+          ...e,
+          date: new Date(e.date)
+        }));
+        setEvents(eventsWithDates);
+      }
     }
-  }, []);
+  }, [isGuest]);
 
-  // Save events to localStorage
+  // Save events to localStorage (only for non-guest users)
   useEffect(() => {
-    localStorage.setItem('calendar-events', JSON.stringify(events));
-  }, [events]);
+    if (!isGuest) {
+      localStorage.setItem('calendar-events', JSON.stringify(events));
+    }
+  }, [events, isGuest]);
 
   const goToPreviousPeriod = useCallback(() => {
     if (view === 'month') {

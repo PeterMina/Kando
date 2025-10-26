@@ -73,8 +73,15 @@ function Dashboard({ user, onLogout }) {
         </div>
         <div className="header-right">
           <span className="user-greeting">
-            Welcome, <strong>{user.username}</strong>
-            {user.isGuest && <span className="guest-badge">Guest</span>}
+            {user.isGuest ? (
+              <>
+                Welcome, <span className="guest-badge">Guest</span>
+              </>
+            ) : (
+              <>
+                Welcome, <strong>{user.firstName || user.username}</strong>
+              </>
+            )}
           </span>
           <button onClick={onLogout} className="btn-logout">
             Logout
