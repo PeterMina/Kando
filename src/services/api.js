@@ -1,5 +1,6 @@
 // services/api.js
-const API_BASE_URL = process.env.KANDO_API_BASE_URL || 'http://localhost:5000/api/v1';
+const API_BASE_URL =
+  "https://kando-backend-production.up.railway.app/api/v1";
 
 // Helper function to handle API requests
 const apiCall = async (endpoint, options = {}) => {
@@ -61,6 +62,15 @@ export const authApi = {
       method: 'POST',
       body: credentials,
     }),
+
+  guestLogin: () =>
+    apiCall('/auth/guest', {
+      method: 'POST',
+    }),
+
+  logout: () => {
+    localStorage.removeItem('authToken');
+  },
 };
 
 // Tasks API endpoints
