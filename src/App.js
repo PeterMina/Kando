@@ -3,6 +3,8 @@ import './App.css';
 import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Dashboard from './components/Dashboard/Dashboard';
+import { setGuestMode } from './services/api';
+import { clearGuestTasks } from './services/mockData';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -34,10 +36,19 @@ function App() {
   }, []);
 
   const handleLogin = (userData, token) => {
+    // Set guest mode flag immediately if guest user
+    if (userData.isGuest) {
+      setGuestMode(true);
+    }
+
     // Store both user data and token
     setUser(userData);
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('user', JSON.stringify(userData));
+
+    // Don't persist guest sessions to localStorage
+    if (!userData.isGuest) {
+      localStorage.setItem('authToken', token);
+      localStorage.setItem('user', JSON.stringify(userData));
+    }
   };
 
   const handleRegister = (userData, token) => {
@@ -48,6 +59,12 @@ function App() {
   };
 
   const handleLogout = () => {
+    // Clear guest data from memory if it was a guest session
+    if (user && user.isGuest) {
+      setGuestMode(false);
+      clearGuestTasks();
+    }
+
     // Clear everything
     setUser(null);
     setShowRegister(false);

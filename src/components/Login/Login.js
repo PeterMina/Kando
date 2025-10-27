@@ -63,22 +63,22 @@ function Login({ onLogin, onSwitchToRegister }) {
     setLoading(true);
 
     try {
-      const response = await authApi.guestLogin();
+      // For guest mode, we don't actually call the backend
+      // We create a local guest session instead
+      const guestUser = {
+        email: 'guest@kando.app',
+        firstName: 'Guest',
+        lastName: 'User',
+        tier: 'Free',
+        isGuest: true // Flag to identify guest users
+      };
 
-      // Store guest token if provided
-      if (response.token) {
-        localStorage.setItem('authToken', response.token);
-      }
-
-      onLogin({
-        email: response.email,
-        firstName: response.firstName,
-        lastName: response.lastName,
-        tier: response.tier,
-      });
+      // No real token for guests
+      onLogin(guestUser, null);
     } catch (err) {
       setError(err.message || 'Guest login failed. Please try again.');
       console.error('Guest login error:', err);
+    } finally {
       setLoading(false);
     }
   }, [onLogin]);

@@ -214,29 +214,32 @@ export const tasksApi = {
     });
   },
 
-  create: (taskData) =>
-    isGuestMode()
+  create: (taskData) => {
+    return isGuestMode()
       ? createGuestTask(taskData)
       : apiCall('/tasks', {
       method: HTTP_METHODS.POST,
-      body: taskData,
-    }),
+      body: taskData
+    });
+  },
 
-  update: (taskId, taskData) =>
-    isGuestMode()
+  update: (taskId, taskData) => {
+    return isGuestMode()
       ? updateGuestTask(taskId, taskData)
       : apiCall(`/tasks/${taskId}`, {
       method: HTTP_METHODS.PUT,
       body: taskData,
-    }),
+    });
+  },
 
-  updateStatus: (taskId, status) =>
-    isGuestMode()
+  updateStatus: (taskId, status) => {
+    return isGuestMode()
       ? updateGuestTaskStatus(taskId, status)
       : apiCall(`/tasks/${taskId}/status`, {
       method: HTTP_METHODS.PATCH,
       body: { status },
-    }),
+    });
+  },
 
   delete: (taskId) =>
     isGuestMode()
