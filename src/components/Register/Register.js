@@ -1,9 +1,28 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import './Register.css';
 import kandoLogo from '../../assets/kando-logo.svg';
 import { authApi } from '../../services/api';
 
-function Register({ onRegister, onSwitchToLogin }) {
+/**
+ * Form validation configuration
+ */
+const VALIDATION_RULES = {
+  EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+  MIN_PASSWORD_LENGTH: 6,
+};
+
+const ERROR_MESSAGES = {
+  FIRST_NAME_REQUIRED: 'First name is required',
+  LAST_NAME_REQUIRED: 'Last name is required',
+  EMAIL_REQUIRED: 'Email is required',
+  EMAIL_INVALID: 'Please enter a valid email address',
+  PASSWORD_REQUIRED: 'Password is required',
+  PASSWORD_TOO_SHORT: `Password must be at least ${VALIDATION_RULES.MIN_PASSWORD_LENGTH} characters long`,
+  PASSWORDS_MISMATCH: 'Passwords do not match',
+  REGISTRATION_FAILED: 'Registration failed. Please try again.',
+};
+
+function Register({ onSuccess, onSwitchToLogin }) {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
@@ -14,50 +33,64 @@ function Register({ onRegister, onSwitchToLogin }) {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Handle form field changes
+   */
   const handleFormChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
-  }, []);
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
+  }, [error]);
 
-  const validateForm = () => {
-    if (!formData.firstName.trim()) {
-      setError('First name is required');
+  /**
+   * Validate form data
+   */
+  const validateForm = useCallback(() => {
+    const { firstName, lastName, email, password, confirmPassword } = formData;
+
+    if (!firstName.trim()) {
+      setError(ERROR_MESSAGES.FIRST_NAME_REQUIRED);
       return false;
     }
 
-    if (!formData.lastName.trim()) {
-      setError('Last name is required');
+    if (!lastName.trim()) {
+      setError(ERROR_MESSAGES.LAST_NAME_REQUIRED);
       return false;
     }
 
-    if (!formData.email.trim()) {
-      setError('Email is required');
+    if (!email.trim()) {
+      setError(ERROR_MESSAGES.EMAIL_REQUIRED);
       return false;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(formData.email)) {
-      setError('Please enter a valid email address');
+    if (!VALIDATION_RULES.EMAIL_REGEX.test(email)) {
+      setError(ERROR_MESSAGES.EMAIL_INVALID);
       return false;
     }
 
-    if (!formData.password) {
-      setError('Password is required');
+    if (!password) {
+      setError(ERROR_MESSAGES.PASSWORD_REQUIRED);
       return false;
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
+    if (password.length < VALIDATION_RULES.MIN_PASSWORD_LENGTH) {
+      setError(ERROR_MESSAGES.PASSWORD_TOO_SHORT);
       return false;
     }
 
-    if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
+    if (password !== confirmPassword) {
+      setError(ERROR_MESSAGES.PASSWORDS_MISMATCH);
       return false;
     }
 
     return true;
-  };
+  }, [formData]);
 
+  /**
+   * Handle form submission
+   */
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
@@ -69,26 +102,31 @@ function Register({ onRegister, onSwitchToLogin }) {
     setLoading(true);
 
     try {
-      const response = await authApi.register({
-        firstName: formData.firstName,
-        lastName: formData.lastName,
-        email: formData.email,
+      await authApi.register({
+        firstName: formData.firstName.trim(),
+        lastName: formData.lastName.trim(),
+        email: formData.email.trim(),
         password: formData.password,
       });
 
-      // Call onRegister callback with user data
-      onRegister({
-        email: response.email,
-        firstName: response.firstName,
-        lastName: response.lastName,
-      });
+      // Notify parent of successful registration
+      onSuccess();
+      
     } catch (err) {
-      setError(err.message || 'Registration failed. Please try again.');
+      const errorMessage = err?.message || ERROR_MESSAGES.REGISTRATION_FAILED;
+      setError(errorMessage);
       console.error('Registration error:', err);
     } finally {
       setLoading(false);
     }
-  }, [formData, onRegister]);
+  }, [formData, validateForm, onSuccess]);
+
+  /**
+   * Check if form has any input
+   */
+  const hasFormInput = useMemo(() => {
+    return Object.values(formData).some(value => value.trim() !== '');
+  }, [formData]);
 
   return (
     <div className="register-container">
@@ -99,9 +137,13 @@ function Register({ onRegister, onSwitchToLogin }) {
           <p className="subtitle">Join Kando and start organizing your tasks</p>
         </div>
 
-        {error && <div className="error-message">{error}</div>}
+        {error && (
+          <div className="error-message" role="alert">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="register-form">
+        <form onSubmit={handleSubmit} className="register-form" noValidate>
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="firstName">First Name</label>
@@ -113,6 +155,8 @@ function Register({ onRegister, onSwitchToLogin }) {
                 placeholder="Enter your first name"
                 autoComplete="given-name"
                 disabled={loading}
+                required
+                aria-required="true"
               />
             </div>
 
@@ -126,6 +170,8 @@ function Register({ onRegister, onSwitchToLogin }) {
                 placeholder="Enter your last name"
                 autoComplete="family-name"
                 disabled={loading}
+                required
+                aria-required="true"
               />
             </div>
           </div>
@@ -140,6 +186,8 @@ function Register({ onRegister, onSwitchToLogin }) {
               placeholder="Enter your email"
               autoComplete="email"
               disabled={loading}
+              required
+              aria-required="true"
             />
           </div>
 
@@ -150,9 +198,12 @@ function Register({ onRegister, onSwitchToLogin }) {
               id="password"
               value={formData.password}
               onChange={(e) => handleFormChange('password', e.target.value)}
-              placeholder="Create a password (min 6 characters)"
+              placeholder={`Create a password (min ${VALIDATION_RULES.MIN_PASSWORD_LENGTH} characters)`}
               autoComplete="new-password"
               disabled={loading}
+              required
+              aria-required="true"
+              minLength={VALIDATION_RULES.MIN_PASSWORD_LENGTH}
             />
           </div>
 
@@ -166,17 +217,29 @@ function Register({ onRegister, onSwitchToLogin }) {
               placeholder="Confirm your password"
               autoComplete="new-password"
               disabled={loading}
+              required
+              aria-required="true"
             />
           </div>
 
-          <button type="submit" className="btn-register" disabled={loading}>
+          <button 
+            type="submit" 
+            className="btn-register" 
+            disabled={loading || !hasFormInput}
+            aria-busy={loading}
+          >
             {loading ? 'Creating Account...' : 'Create Account'}
           </button>
         </form>
 
         <div className="login-link">
           Already have an account?{' '}
-          <button onClick={onSwitchToLogin} className="link-btn" disabled={loading}>
+          <button 
+            onClick={onSwitchToLogin} 
+            className="link-btn" 
+            disabled={loading}
+            type="button"
+          >
             Sign in here
           </button>
         </div>

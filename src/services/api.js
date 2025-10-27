@@ -173,6 +173,9 @@ export const authApi = {
     if (response.token) {
       tokenManager.set(response.token);
     }
+    if (response.user) {
+      localStorage.setItem('user', JSON.stringify(response.user));
+    }
     
     return response;
   },

@@ -1,28 +1,69 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo, use } from 'react';
 import './Login.css';
 import kandoLogo from '../../assets/kando-logo.svg';
-import { authApi } from '../../services/api';
+import { authApi, setGuestMode } from '../../services/api';
 
-function Login({ onLogin, onSwitchToRegister }) {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+/**
+ * Form validation configuration
+ */
+const VALIDATION_RULES = {
+  EMAIL_REGEX: /^[^\s@]+@[^\s@]+\.[^\s@]+$/,
+};
+
+const ERROR_MESSAGES = {
+  EMAIL_REQUIRED: 'Email is required',
+  EMAIL_INVALID: 'Please enter a valid email address',
+  PASSWORD_REQUIRED: 'Password is required',
+  LOGIN_FAILED: 'Invalid email or password',
+  GUEST_LOGIN_FAILED: 'Guest login failed. Please try again.',
+};
+
+function Login({ onSuccess, onSwitchToRegister, successMessage }) {
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+  });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const validateForm = () => {
+  /**
+   * Handle form field changes
+   */
+  const handleFormChange = useCallback((field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    // Clear error when user starts typing
+    if (error) {
+      setError('');
+    }
+  }, [error]);
+
+  /**
+   * Validate form data
+   */
+  const validateForm = useCallback(() => {
+    const { email, password } = formData;
+
     if (!email.trim()) {
-      setError('Email is required');
+      setError(ERROR_MESSAGES.EMAIL_REQUIRED);
+      return false;
+    }
+
+    if (!VALIDATION_RULES.EMAIL_REGEX.test(email)) {
+      setError(ERROR_MESSAGES.EMAIL_INVALID);
       return false;
     }
 
     if (!password) {
-      setError('Password is required');
+      setError(ERROR_MESSAGES.PASSWORD_REQUIRED);
       return false;
     }
 
     return true;
-  };
+  }, [formData]);
 
+  /**
+   * Handle regular login submission
+   */
   const handleSubmit = useCallback(async (e) => {
     e.preventDefault();
     setError('');
@@ -35,53 +76,67 @@ function Login({ onLogin, onSwitchToRegister }) {
 
     try {
       const response = await authApi.login({
-        email,
-        password,
+        email: formData.email.trim(),
+        password: formData.password,
       });
 
-      // Store token if provided
-      if (response.token) {
-        localStorage.setItem('authToken', response.token);
-      }
+      // Extract token and user data from response
+      const { token, user } = response;
 
-      // Call onLogin callback with user data
-      onLogin({
-        email: response.user.email,
-        firstName: response.user.firstName,
-        lastName: response.user.lastName,
-      }, response.token);
+      // Notify parent component of successful login
+      onSuccess({
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        tier: user.tier,
+      });
     } catch (err) {
-      setError(err.message || 'Invalid email or password');
+      const errorMessage = err?.message || ERROR_MESSAGES.LOGIN_FAILED;
+      setError(errorMessage);
       console.error('Login error:', err);
     } finally {
       setLoading(false);
     }
-  }, [email, password, onLogin]);
+  }, [formData, validateForm, onSuccess]);
 
+  /**
+   * Handle guest login
+   */
   const handleGuestLogin = useCallback(async () => {
     setError('');
     setLoading(true);
 
     try {
-      // For guest mode, we don't actually call the backend
-      // We create a local guest session instead
+      // Create a local guest session
       const guestUser = {
         email: 'guest@kando.app',
         firstName: 'Guest',
         lastName: 'User',
         tier: 'Free',
-        isGuest: true // Flag to identify guest users
+        isGuest: true,
       };
 
-      // No real token for guests
-      onLogin(guestUser, null);
+      // Set guest mode flag
+      setGuestMode(true);
+
+      // Notify parent component of successful guest login
+      // Note: Guest sessions are not persisted to localStorage
+      onSuccess(guestUser);
     } catch (err) {
-      setError(err.message || 'Guest login failed. Please try again.');
+      const errorMessage = err?.message || ERROR_MESSAGES.GUEST_LOGIN_FAILED;
+      setError(errorMessage);
       console.error('Guest login error:', err);
     } finally {
       setLoading(false);
     }
-  }, [onLogin]);
+  }, [onSuccess]);
+
+  /**
+   * Check if form has any input
+   */
+  const hasFormInput = useMemo(() => {
+    return formData.email.trim() !== '' || formData.password !== '';
+  }, [formData]);
 
   return (
     <div className="login-container">
@@ -92,17 +147,34 @@ function Login({ onLogin, onSwitchToRegister }) {
           <p className="login-subtitle">KANBAN. SIMPLIFIED</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="login-form">
+        {/* Success message from registration */}
+        {successMessage && (
+          <div className="success-message" role="alert">
+            {successMessage}
+          </div>
+        )}
+
+        {/* Error message */}
+        {error && (
+          <div className="error-message" role="alert">
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="login-form" noValidate>
           <div className="form-group">
             <label htmlFor="email">Email</label>
             <input
-              type="text"
+              type="email"
               id="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Enter email"
+              value={formData.email}
+              onChange={(e) => handleFormChange('email', e.target.value)}
+              placeholder="Enter your email"
               disabled={loading}
               autoComplete="email"
+              required
+              aria-required="true"
+              aria-invalid={error && !formData.email.trim()}
             />
           </div>
 
@@ -111,17 +183,23 @@ function Login({ onLogin, onSwitchToRegister }) {
             <input
               type="password"
               id="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="Enter password"
+              value={formData.password}
+              onChange={(e) => handleFormChange('password', e.target.value)}
+              placeholder="Enter your password"
               disabled={loading}
               autoComplete="current-password"
+              required
+              aria-required="true"
+              aria-invalid={error && !formData.password}
             />
           </div>
 
-          {error && <div className="error-message">{error}</div>}
-
-          <button type="submit" className="btn-login" disabled={loading}>
+          <button 
+            type="submit" 
+            className="btn-login" 
+            disabled={loading || !hasFormInput}
+            aria-busy={loading}
+          >
             {loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
@@ -134,6 +212,8 @@ function Login({ onLogin, onSwitchToRegister }) {
           onClick={handleGuestLogin}
           className="btn-guest"
           disabled={loading}
+          type="button"
+          aria-busy={loading}
         >
           {loading ? 'Continuing...' : 'Continue as Guest'}
         </button>
@@ -144,6 +224,7 @@ function Login({ onLogin, onSwitchToRegister }) {
             onClick={onSwitchToRegister}
             className="link-btn"
             disabled={loading}
+            type="button"
           >
             Create one here
           </button>

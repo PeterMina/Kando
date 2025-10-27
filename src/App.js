@@ -3,98 +3,140 @@ import './App.css';
 import Login from './components/Login/Login';
 import Register from './components/Register/Register';
 import Dashboard from './components/Dashboard/Dashboard';
-import { setGuestMode } from './services/api';
+import { setGuestMode, authApi } from './services/api';
 import { clearGuestTasks } from './services/mockData';
 
 function App() {
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [successMessage, setSuccessMessage] = useState('');
 
-  // Check if user is already logged in when app loads
+  /**
+   * Check if user is already logged in when app loads
+   */
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const savedUser = localStorage.getItem('user');
-    
-    if (token && savedUser) {
-      // Optional: Verify token is still valid with your backend
-      // verifyToken(token).then(isValid => {
-      //   if (isValid) {
-      //     setUser(JSON.parse(savedUser));
-      //   } else {
-      //     localStorage.removeItem('authToken');
-      //     localStorage.removeItem('user');
-      //   }
-      //   setLoading(false);
-      // });
+    const verifyExistingSession = async () => {
+      const token = localStorage.getItem('authToken');
+      const savedUser = localStorage.getItem('user');
       
-      // For now, just restore the user
-      setUser(JSON.parse(savedUser));
-    }
-    
-    setLoading(false);
+      if (token && savedUser) {
+        try {
+          const isValid = await authApi.verifyToken();
+          
+          if (isValid) {
+            const userData = JSON.parse(savedUser);
+            setUser(userData);
+            
+            // Restore guest mode if it was a guest session
+            if (userData.isGuest) {
+              setGuestMode(true);
+            }
+          } else {
+            // Token is invalid, clear storage
+            clearAuthData();
+          }
+        } catch (error) {
+          console.error('Token verification failed:', error);
+          clearAuthData();
+        }
+      }
+      
+      setLoading(false);
+    };
+
+    verifyExistingSession();
   }, []);
 
-  const handleLogin = (userData, token) => {
-    // Set guest mode flag immediately if guest user
-    if (userData.isGuest) {
-      setGuestMode(true);
-    }
-
-    // Store both user data and token
-    setUser(userData);
-
-    // Don't persist guest sessions to localStorage
-    if (!userData.isGuest) {
-      localStorage.setItem('authToken', token);
-      localStorage.setItem('user', JSON.stringify(userData));
-    }
-  };
-
-  const handleRegister = (userData, token) => {
-    // Same as login - store credentials
-    setUser(userData);
-    localStorage.setItem('authToken', token);
-    localStorage.setItem('user', JSON.stringify(userData));
-  };
-
-  const handleLogout = () => {
-    // Clear guest data from memory if it was a guest session
-    if (user && user.isGuest) {
-      setGuestMode(false);
-      clearGuestTasks();
-    }
-
-    // Clear everything
-    setUser(null);
-    setShowRegister(false);
+  /**
+   * Clear authentication data from localStorage
+   */
+  const clearAuthData = () => {
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
   };
 
-  const switchToRegister = () => {
-    setShowRegister(true);
+  /**
+   * Handle successful login
+   */
+  const handleLoginSuccess = (userData) => {
+    setUser(userData);
   };
 
-  const switchToLogin = () => {
+  /**
+   * Handle successful registration
+   */
+  const handleRegisterSuccess = () => {
+    // Show success message
+    setSuccessMessage('Registration successful! Please sign in with your credentials.');
+    
+    // Switch to login view
     setShowRegister(false);
+    
+    // Auto-clear message after 5 seconds
+    setTimeout(() => {
+      setSuccessMessage('');
+    }, 5000);
+  };
+
+  /**
+   * Handle user logout
+   */
+  const handleLogout = () => {
+    // Clear guest data from memory if it was a guest session
+    if (user?.isGuest) {
+      setGuestMode(false);
+      clearGuestTasks();
+    }
+
+    // Clear user state and storage
+    setUser(null);
+    setShowRegister(false);
+    setSuccessMessage('');
+    clearAuthData();
+    
+    // Call API logout
+    authApi.logout();
+  };
+
+  /**
+   * Switch between login and register views
+   */
+  const toggleAuthView = () => {
+    setShowRegister(prev => !prev);
   };
 
   // Show loading state while checking auth
   if (loading) {
-    return <div className="App">Loading...</div>;
+    return (
+      <div className="App">
+        <div className="loading-container">
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="App">
       {!user ? (
         showRegister ? (
-          <Register onRegister={handleRegister} onSwitchToLogin={switchToLogin} />
+          <Register 
+            onSuccess={handleRegisterSuccess} 
+            onSwitchToLogin={toggleAuthView} 
+          />
         ) : (
-          <Login onLogin={handleLogin} onSwitchToRegister={switchToRegister} />
+          <Login 
+            onSuccess={handleLoginSuccess} 
+            onSwitchToRegister={toggleAuthView}
+            successMessage={successMessage}
+          />
         )
       ) : (
-        <Dashboard user={user} onLogout={handleLogout} />
+        <Dashboard 
+          user={user} 
+          onLogout={handleLogout} 
+        />
       )}
     </div>
   );
