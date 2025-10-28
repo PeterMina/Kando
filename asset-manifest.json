@@ -1,0 +1,16 @@
+{
+  "files": {
+    "main.css": "/Kando/static/css/main.2524ab67.css",
+    "main.js": "/Kando/static/js/main.67cb0cc7.js",
+    "static/js/835.cb687109.chunk.js": "/Kando/static/js/835.cb687109.chunk.js",
+    "static/media/kando-logo.svg": "/Kando/static/media/kando-logo.4dc9448de92d122fafa8c80a8989a34e.svg",
+    "index.html": "/Kando/index.html",
+    "main.2524ab67.css.map": "/Kando/static/css/main.2524ab67.css.map",
+    "main.67cb0cc7.js.map": "/Kando/static/js/main.67cb0cc7.js.map",
+    "835.cb687109.chunk.js.map": "/Kando/static/js/835.cb687109.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.2524ab67.css",
+    "static/js/main.67cb0cc7.js"
+  ]
+}
