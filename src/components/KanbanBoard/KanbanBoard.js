@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { PlusCircle, Trash2, Edit2, Clock, CheckSquare, AlertCircle, Info } from 'lucide-react';
+import { PlusCircle, Trash2, Edit2, Clock, CheckSquare, AlertCircle, Info, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
 import './KanbanBoard.css';
 import { tasksApi } from '../../services/api';
 import TaskModal from '../TaskModal/TaskModal';
@@ -10,6 +10,12 @@ function KanbanBoard() {
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Date filter state
+  const currentDate = new Date();
+  const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
+  const [selectedYear, setSelectedYear] = useState(currentDate.getFullYear());
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Check if user is in guest mode
   const isGuest = window.__KANDO_GUEST_MODE__ || false;
@@ -37,28 +43,22 @@ function KanbanBoard() {
     return statusMap[frontendStatus] || 'PENDING';
   };
 
-  // Fetch tasks on component mount
+  // Fetch tasks when component mounts or date filter changes
   React.useEffect(() => {
     const fetchTasks = async () => {
-
       setLoading(true);
       setError(null);
       try {
-        const currentDate = new Date();
-        const month = currentDate.getMonth() + 1; 
-        const year = currentDate.getFullYear();
-        
-        const fetchedTasks = await tasksApi.getAll(month, year);
-        
+        const fetchedTasks = await tasksApi.getAll(selectedMonth, selectedYear);
+
         // Convert backend status to frontend status for each task
         const tasksWithFrontendStatus = fetchedTasks.map(task => ({
           ...task,
           status: toFrontendStatus(task.status)
         }));
-        
+
         setTasks(tasksWithFrontendStatus);
       } catch (err) {
-        console.error('Failed to fetch tasks:', err);
         setError(err.message || 'Failed to load tasks');
       } finally {
         setLoading(false);
@@ -66,7 +66,8 @@ function KanbanBoard() {
     };
 
     fetchTasks();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedMonth, selectedYear]);
 
   const priorityColors = {
     LOW: { bg: '#28a745', text: '#ffffff' },      // Green for low priority
@@ -77,6 +78,45 @@ function KanbanBoard() {
     Medium: { bg: '#ffc107', text: '#000000' },
     High: { bg: '#dc3545', text: '#ffffff' }
   };
+
+  // Date navigation functions
+  const goToPreviousMonth = useCallback(() => {
+    if (selectedMonth === 1) {
+      setSelectedMonth(12);
+      setSelectedYear(selectedYear - 1);
+    } else {
+      setSelectedMonth(selectedMonth - 1);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  const goToNextMonth = useCallback(() => {
+    if (selectedMonth === 12) {
+      setSelectedMonth(1);
+      setSelectedYear(selectedYear + 1);
+    } else {
+      setSelectedMonth(selectedMonth + 1);
+    }
+  }, [selectedMonth, selectedYear]);
+
+  const goToCurrentMonth = useCallback(() => {
+    const now = new Date();
+    setSelectedMonth(now.getMonth() + 1);
+    setSelectedYear(now.getFullYear());
+  }, []);
+
+  const getMonthName = useCallback((month) => {
+    const monthNames = [
+      'January', 'February', 'March', 'April', 'May', 'June',
+      'July', 'August', 'September', 'October', 'November', 'December'
+    ];
+    return monthNames[month - 1];
+  }, []);
+
+  const handleDateChange = useCallback((month, year) => {
+    setSelectedMonth(month);
+    setSelectedYear(year);
+    setShowDatePicker(false);
+  }, []);
 
   const openTaskModal = useCallback((task = null) => {
     setEditingTask(task);
@@ -371,7 +411,55 @@ function KanbanBoard() {
       )}
 
       <div className="kanban-header">
-        <h2 className="kanban-title">Kanban Board</h2>
+        <div className="header-left">
+          <h2 className="kanban-title">Kanban Board</h2>
+        </div>
+
+        <div className="date-filter">
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={goToPreviousMonth}
+            className="date-nav-btn"
+            title="Previous month"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </motion.button>
+
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="date-display clickable"
+            onClick={() => setShowDatePicker(true)}
+            title="Click to select month and year"
+          >
+            <Calendar className="w-4 h-4" />
+            <span className="date-text">
+              {getMonthName(selectedMonth)} {selectedYear}
+            </span>
+          </motion.div>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={goToNextMonth}
+            className="date-nav-btn"
+            title="Next month"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </motion.button>
+
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={goToCurrentMonth}
+            className="date-today-btn"
+            title="Go to current month"
+          >
+            Today
+          </motion.button>
+        </div>
+
         <motion.button
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
@@ -483,6 +571,75 @@ function KanbanBoard() {
           editingTask={editingTask}
           loading={loading}
         />
+      </AnimatePresence>
+
+      {/* Date Picker Modal */}
+      <AnimatePresence>
+        {showDatePicker && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="modal-overlay"
+            onClick={() => setShowDatePicker(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="date-picker-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="modal-header">
+                <h3 className="modal-title">Select Month & Year</h3>
+                <button onClick={() => setShowDatePicker(false)} className="modal-close-btn">
+                  ×
+                </button>
+              </div>
+
+              <div className="date-picker-content">
+                {/* Year Selector */}
+                <div className="year-selector">
+                  <h4>Year</h4>
+                  <div className="year-grid">
+                    {[...Array(5)].map((_, i) => {
+                      const year = currentDate.getFullYear() - 2 + i;
+                      return (
+                        <motion.button
+                          key={year}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          className={`year-btn ${selectedYear === year ? 'active' : ''}`}
+                          onClick={() => handleDateChange(selectedMonth, year)}
+                        >
+                          {year}
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Month Selector */}
+                <div className="month-selector">
+                  <h4>Month</h4>
+                  <div className="month-grid">
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((month) => (
+                      <motion.button
+                        key={month}
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        className={`month-btn ${selectedMonth === month ? 'active' : ''}`}
+                        onClick={() => handleDateChange(month, selectedYear)}
+                      >
+                        {getMonthName(month).substring(0, 3)}
+                      </motion.button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
     </div>
   );
